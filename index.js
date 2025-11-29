@@ -2,7 +2,16 @@ const WebSocket = require('ws')
 const http = require('http')
 const sudoku = require('sudoku-gen')
 
-const server = http.createServer()
+const server = http.createServer((req, res) => {
+  if (req.url === '/ping') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('pong')
+    return
+  }
+
+  res.writeHead(404)
+  res.end('Not Found')
+})
 const wss = new WebSocket.Server({ server })
 
 let solution = []
@@ -74,6 +83,6 @@ wss.on('connection', (ws) => {
   })
 })
 
-server.listen(8080, () => {
-  console.log('Sudoku server running on ws://localhost:8080')
+server.listen(80, () => {
+  console.log('Sudoku server running on ws://localhost:80')
 })
