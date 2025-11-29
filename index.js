@@ -14,6 +14,8 @@ const server = http.createServer((req, res) => {
 })
 const wss = new WebSocket.Server({ server })
 
+let clients = new Map()
+let players = []
 let solution = []
 
 let board = generateSudoku('easy')
@@ -38,6 +40,7 @@ function generateSudoku(difficulty) {
 }
 
 function broadcast(obj) {
+  console.log(obj)
   const msg = JSON.stringify(obj)
   for (const client of wss.clients) {
     if (client.readyState === WebSocket.OPEN) client.send(msg)
@@ -45,7 +48,7 @@ function broadcast(obj) {
 }
 
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'state', board }))
+  ws.send(JSON.stringify({ type: 'state', board, players }))
 
   ws.on('message', (msg) => {
     let data
@@ -55,8 +58,15 @@ wss.on('connection', (ws) => {
       return
     }
 
+    if (data.type == 'auth') {
+      const newPlayer = { nickname: data.nickname, color: data.color }
+      clients[ws] = newPlayer
+      players.push(newPlayer)
+      broadcast({ type: 'new-player', ...newPlayer })
+    }
+
     if (data.type === 'update') {
-      const { row, col, value } = data
+      const { row, col, value, color } = data
       const correctValue = solution[row * 9 + col]
 
       if (!board[row][col].fixed) {
@@ -64,6 +74,7 @@ wss.on('connection', (ws) => {
 
         if (isCorrect) {
           board[row][col].value = value
+          board[row][col].color = color
         }
 
         broadcast({
@@ -72,6 +83,7 @@ wss.on('connection', (ws) => {
           col,
           value,
           correct: isCorrect,
+          color,
         })
       }
     }
@@ -80,6 +92,13 @@ wss.on('connection', (ws) => {
       board = generateSudoku(data.difficulty || 'easy')
       broadcast({ type: 'state', board })
     }
+  })
+  ws.on('close', () => {
+    broadcast({ type: 'player-leave', ...clients[ws] })
+    players = players.filter(
+      (p) => p.nickname != clients[ws].nickname && p.color != clients[ws].color
+    )
+    clients.delete(ws)
   })
 })
 
