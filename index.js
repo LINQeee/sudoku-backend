@@ -112,6 +112,6 @@ wss.on('connection', (ws) => {
   })
 })
 
-server.listen(80, () => {
-  console.log('Sudoku server running on ws://localhost:80')
+server.listen(1919, () => {
+  console.log('Sudoku server running on ws://localhost:1919')
 })
