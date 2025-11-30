@@ -59,22 +59,26 @@ wss.on('connection', (ws) => {
     }
 
     if (data.type == 'auth') {
-      const newPlayer = { nickname: data.nickname, color: data.color }
+      const newPlayer = { nickname: data.nickname, color: data.color, count: 0 }
       clients[ws] = newPlayer
       players.push(newPlayer)
       broadcast({ type: 'new-player', ...newPlayer })
     }
 
     if (data.type === 'update') {
-      const { row, col, value, color } = data
+      const { row, col, value, color, nickname } = data
       const correctValue = solution[row * 9 + col]
 
       if (!board[row][col].fixed) {
         const isCorrect = value === correctValue
 
+        const owner = players.find(
+          (p) => p.color == color && p.nickname == nickname
+        )
         if (isCorrect) {
           board[row][col].value = value
           board[row][col].color = color
+          owner.count++
         }
 
         broadcast({
@@ -84,13 +88,19 @@ wss.on('connection', (ws) => {
           value,
           correct: isCorrect,
           color,
+          nickname,
+          count: owner.count,
         })
       }
     }
 
     if (data.type === 'new') {
       board = generateSudoku(data.difficulty || 'easy')
-      broadcast({ type: 'state', board })
+      broadcast({
+        type: 'state',
+        board,
+        players: players.map((p) => ({ ...p, count: 0 })),
+      })
     }
   })
   ws.on('close', () => {
